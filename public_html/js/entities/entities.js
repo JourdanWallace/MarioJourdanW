@@ -24,22 +24,29 @@ game.PlayerEntity = me.Entity.extend({
        if(me.input.isKeyPressed("right")){
            this.body.vel.x += this.body.accel.x * me.timer.tick;
            
-       }else{
-           this.body.vel.x = 0;
-       }          
-       
-       if(this.body.vel.x !==0) {
+        } else {
+            this.body.vel.x = 0;
+        }
+
+
+
+        if (this.body.vel.x !== 0) {
             if (!this.renderable.isCurrentAnimation("smallWalk")) {
                 this.renderable.setCurrentAnimation("smallWalk");
                 this.renderable.setAnimationFrame();
             }
-       }else{
-           this.renderable.setCurrentAnimation("idle");
-       }
-       
-       this.body.update(delta);
-       this._super(me.Entity, "update", [delta]);
-       return true;
-   }
+        } else {
+            this.renderable.setCurrentAnimation("idle");
+        }
 
+        this.body.update(delta);
+        this._super(me.Entity, "update", [delta]);
+        return true;
+    }
+
+});
+
+game.LevelTrigger = me.entity.extend({
+   
+    
 });
