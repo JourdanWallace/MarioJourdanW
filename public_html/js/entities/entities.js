@@ -21,6 +21,8 @@ game.PlayerEntity = me.Entity.extend({
    },
    
    update: function(delta) {
+       
+       
        if(me.input.isKeyPressed("right")){
            this.body.vel.x += this.body.accel.x * me.timer.tick;
            
@@ -44,9 +46,18 @@ game.PlayerEntity = me.Entity.extend({
         return true;
     }
 
+
 });
 
 game.LevelTrigger = me.entity.extend({
+   init: function(x, y, settings){
+       this._super(me.Entity, 'init', [x, y, settings]);
+       this.body.onCollision = this.onCollsion.bind(this);
+       this.level = settings.level;
+   },
    
+   onCollision: function(){
+       
+   } 
     
 });
