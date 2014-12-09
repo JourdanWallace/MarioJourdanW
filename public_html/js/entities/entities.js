@@ -8,24 +8,32 @@ game.PlayerEntity = me.Entity.extend({
           width: 64,
           height: 64,
           getShape: function (){
-              return (new me.Rect(0, 0, 64, 64)).toPolygon();
+          return (new me.Rect(0, 0, 64, 64)).toPolygon();
            }
        }]);
       // This code allows the character to walk, and when the button is not pressed, the player is not walking    
        this.renderable.addAnimation("idle", [39]);
+       this.renderable.addAnimation("bigIdle", [49]);
        this.renderable.addAnimation("smallWalk", [143, 144, 145, 146, 147, 148, 149, 150, 151], 80);
+       this.renderable.addAnimation("bigWalk", [152, 153, 154, 155, 156, 157], 80);
+       this.renderable.addAnimation("shrink", [21, 22, 23, 24, 25, 26, 27, 28], 80)
+       this.renderable.addAnimation("grow", [29, 30, 31, 32, 33, 34, 35, 36], 80)
+       
+       
       // This tells the player to stand still if it is not walking
        this.renderable.setCurrentAnimation("idle");
+       
+       this.big = false;
        // Allows the character to move and how fast
        this.body.setVelocity(5, 20);
        // Tells the screen to follow the player as it moves
        me.game.viewport.follow(this.pos, me.game.viewport.AXIS.BOTH);
    },
    
-   update: function(delta) {
-       // Checks if the left key is pressed
-       if(me.input.isKeyPressed("left")) {
-           this.flipX(true);
+    update: function(delta) {
+        // Checks if the left key is pressed
+        if (me.input.isKeyPressed("left")) {
+            this.flipX(true);
            this.body.vel.x -= this.body.accel.x * me.timer.tick;
        }
        
@@ -37,27 +45,62 @@ game.PlayerEntity = me.Entity.extend({
         } else {
             this.body.vel.x = 0;
         }
+        
+        if(me.input.isKeyPressed("up")) {
+            if(!this.body.jumping && !this.body.falling) {
+                this.body.jumping = true;
+                this.body.vel.y -= this.body.accel.y * me.timer.tick;
+                
+            }
+        }
 
             this.body.update(delta);
             me.collision.check(this, true, this.collideHandler.bind(this), true);
-
-        if (this.body.vel.x !== 0) {
-            if (!this.renderable.isCurrentAnimation("smallWalk")) {
-                this.renderable.setCurrentAnimation("smallWalk");
-                this.renderable.setAnimationFrame();
+            
+        if (!this.big) {
+            if (this.body.vel.x !== 0) {
+                if (!this.renderable.isCurrentAnimation("smallWalk") && !this.renderable.isCurrentAnimation("grow") && !this.renderable.isCurrentAnimation("shrink")) {
+                    this.renderable.setCurrentAnimation("smallWalk");
+                    this.renderable.setAnimationFrame();
+                }
+            } else {
+                this.renderable.setCurrentAnimation("idle");
             }
-        } else {
-            this.renderable.setCurrentAnimation("idle");
-        }
-
-        
+        }else{
+            if (this.body.vel.x !== 0) {
+                if ( !this.renderable.isCurrentAnimation("bigWalk") && !this.renderable.isCurrentAnimation("grow") && !this.renderable.isCurrentAnimation("shrink")) {
+                     this.renderable.setCurrentAnimation("bigWalk");
+                     this.renderable.setAnimationFrame();
+                }
+            } else {
+                this.renderable.setCurrentAnimation("bigIdle");
+            }
+        }     
         
         this._super(me.Entity, "update", [delta]);
         return true;
     },
-    
     collideHandler: function(response) {
-        
+        var ydif = this.pos.y - response.b.pos.y;
+            console.log(ydif);
+        if (response.b.type === 'badguy') {
+            if (ydif <= -115) {
+                 response.b.alive = false;
+            } else {
+                if(this.big) {
+                    this.big = false;
+                    this.body.vel.y -= this.body.accel.y * me.timer.tick;
+                    this.jumping = true;
+                } else {
+                    me.state.change(me.state.MENU);
+             }
+            }
+        }else if(response.b.type === 'mushroom'){
+            this.renderable.setCurrentAnimation("grow", "bigIdle");
+            this.big = true;
+            me.game.world.removeChild(response.b);
+        }
+
     }
 
 
@@ -100,7 +143,9 @@ game.BadGuy = me.Entity.extend ({
           width: 60,
           height: 28,
           getShape: function (){
-              return (new me.Rect(0, 0, 60, 28)).toPolygon();
+          return (new me.Rect(0, 0, 60, 28)).toPolygon();
+          this.body.setVelocity(4, 6);
+              
            }
        }]);
    
@@ -114,15 +159,14 @@ game.BadGuy = me.Entity.extend ({
        
        this.alwaysUpdate = true;
        
-       this.walkLeft = false;
+       this.walkLeft = true;
        this.alive = true;
        this.type = "badguy";
        
        // this.renderable.addAnimation("run", [0, 1, 2], 80);
        // this.renderable.setCurrentAnimation("run");
        // makes the bad guy able to move
-       this.body.setVelocity(4, 6);
-   
+       
    
     },
     
@@ -138,10 +182,12 @@ game.BadGuy = me.Entity.extend ({
             }
             this.flipX(!this.walkLeft);
             this.body.vel.x += (this.walkLeft) ? -this.body.accel.x * me.timer.tick : this.body.accel.x * me.timer.tick;
+
             
         }else{
             me.game.world.removeChild(this);
         }
+        
         
         this._super(me.Entity, "update", [delta]);
         return true;
@@ -151,4 +197,23 @@ game.BadGuy = me.Entity.extend ({
         
     }
     
+});
+
+game.Mushroom = me.Entity.extend ({
+    init: function(x, y, settings) {
+        this._super(me.Entity, "init", [x, y, {
+                image: "mushroom",
+                spritewidth: "64",
+                spriteheight: "64",
+                width: 64,
+                height: 64,
+                getShape: function() {
+                return (new me.Rect(0, 0, 64, 64)).toPolygon();
+                this.body.setVelocity(1, 6);
+                }
+            }]);
+        me.collision.check(this);
+        this.type = "mushroom";
+    }
+        
 });
